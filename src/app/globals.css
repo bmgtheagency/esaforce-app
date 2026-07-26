@@ -159,7 +159,7 @@ a { color: inherit; text-decoration: none; }
 .builder-option > svg { margin-left: auto; color: var(--red); }
 [dir="rtl"] .builder-option > svg { margin-left: 0; margin-right: auto; }
 .fruit-options { grid-template-columns: repeat(3, 1fr); }
-.fruit-thumb { width: 42px; height: 42px; border-radius: 9px; flex: 0 0 auto; background: url("/brand/ingredients-flatlay.png") center/500% 300%; border: 1px solid rgba(255,255,255,.12); }
+.fruit-thumb { width: 42px; height: 42px; border-radius: 9px; flex: 0 0 auto; background: url("/brand/ingredients-flatlay.webp") center/500% 300%; border: 1px solid rgba(255,255,255,.12); }
 .fruit-none-fruit { background-image: none; background-color: #25282a; }
 .fruit-strawberry { background-position: 0% 0%; }
 .fruit-mango { background-position: 25% 0%; }
@@ -371,4 +371,3 @@ a { color: inherit; text-decoration: none; }
   .tracker-card form { flex-direction: column; }
   .tracker-card form input { min-height: 49px; }
 }
-

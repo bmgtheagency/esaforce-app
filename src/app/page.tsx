@@ -172,7 +172,7 @@ function ProductCard({
     <article className="product-card" style={{ "--accent": product.accent } as React.CSSProperties}>
       <div className="product-photo">
         <Image
-          src="/brand/drinks-hero.png"
+          src="/brand/drinks-hero.webp"
           alt=""
           fill
           sizes="(max-width: 700px) 72vw, 320px"
@@ -331,7 +331,7 @@ export default function Home() {
         {view === "home" && (
           <>
             <section className="hero">
-              <Image src="/brand/drinks-hero.png" alt="ESAFORCE fresh protein drinks" fill priority sizes="100vw" />
+              <Image src="/brand/drinks-hero.webp" alt="ESAFORCE fresh protein drinks" fill priority sizes="100vw" />
               <div className="hero-overlay" />
               <div className="hero-content">
                 <span className="eyebrow"><Sparkles size={15} /> {t.heroEyebrow}</span>
@@ -362,7 +362,7 @@ export default function Home() {
             </section>
 
             <section className="builder-promo">
-              <Image src="/brand/ingredients-flatlay.png" alt="Fresh ESAFORCE ingredients" fill sizes="100vw" />
+              <Image src="/brand/ingredients-flatlay.webp" alt="Fresh ESAFORCE ingredients" fill sizes="100vw" />
               <div className="builder-promo-overlay" />
               <div>
                 <span className="eyebrow"><Zap size={14} /> LIVE CALCULATOR</span>
@@ -388,7 +388,7 @@ export default function Home() {
                   <span><Timer />Fast pickup</span>
                 </div>
               </div>
-              <div className="shop-image"><Image src="/brand/shop-interior.png" alt="ESAFORCE coffee shop interior concept" fill sizes="(max-width: 800px) 100vw, 50vw" /></div>
+              <div className="shop-image"><Image src="/brand/shop-interior.webp" alt="ESAFORCE coffee shop interior concept" fill sizes="(max-width: 800px) 100vw, 50vw" /></div>
             </section>
           </>
         )}
@@ -650,7 +650,7 @@ function OrderTracker({ title, text }: { title: string; text: string }) {
           </div>
         )}
       </div>
-      <div className="tracker-image"><Image src="/brand/shop-exterior.png" alt="ESAFORCE Kenitra exterior concept" fill sizes="50vw" /></div>
+      <div className="tracker-image"><Image src="/brand/shop-exterior.webp" alt="ESAFORCE Kenitra exterior concept" fill sizes="50vw" /></div>
     </section>
   )
 }
