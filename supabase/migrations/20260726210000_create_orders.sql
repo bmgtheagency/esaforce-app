@@ -15,7 +15,7 @@ revoke all on table private.app_config from public, anon, authenticated;
 
 insert into private.app_config (key, value)
 values
-  ('backend_secret_sha256', 'fbc38d4480fbc19200b7d261a3aad09fdb8b2dbbedc39ca5e3d55308a47909fb'),
+  ('backend_secret_sha256', '4d6666a061abd338ed3a24d26fc18a97faadd6b75a390e01057f5d4c3982bbef'),
   ('admin_pin_sha256', 'f3332b291d4e301ee79ac989c52c62aa9fc129c51bc6075643545451f9fff7a2')
 on conflict (key) do update
 set value = excluded.value, updated_at = now();
