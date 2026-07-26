@@ -1,7 +1,16 @@
 "use client"
 
-import { Check, Clock3, Coffee, LockKeyhole, RefreshCw } from "lucide-react"
-import { useState } from "react"
+import { Check, Clock3, Coffee, Languages, LockKeyhole, RefreshCw } from "lucide-react"
+import { useEffect, useState } from "react"
+import {
+  catalogText,
+  fulfillmentText,
+  languages,
+  pickupTimeText,
+  statusText,
+  ui,
+  type Language,
+} from "@/lib/i18n"
 
 type AdminOrder = {
   id: string
@@ -20,6 +29,11 @@ type AdminOrder = {
 const statuses = ["received", "preparing", "ready", "collected", "cancelled"]
 
 export default function AdminPage() {
+  const [language, setLanguage] = useState<Language>(() => {
+    if (typeof window === "undefined") return "en"
+    const stored = window.localStorage.getItem("esaforce-language")
+    return stored === "fr" || stored === "ar" ? stored : "en"
+  })
   const [pin, setPin] = useState(() => {
     if (typeof window === "undefined") return ""
     return window.sessionStorage.getItem("esaforce-admin-pin") ?? ""
@@ -27,6 +41,14 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([])
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [opened, setOpened] = useState(false)
+  const t = ui[language]
+
+  useEffect(() => {
+    document.documentElement.lang = language
+    document.documentElement.dir = language === "ar" ? "rtl" : "ltr"
+    window.localStorage.setItem("esaforce-language", language)
+  }, [language])
 
   async function loadOrders() {
     if (!pin) return
@@ -35,40 +57,68 @@ export default function AdminPage() {
     try {
       const response = await fetch("/api/admin/orders", { headers: { "x-admin-pin": pin } })
       const result = await response.json()
-      if (!response.ok) throw new Error(result.error ?? "Could not load orders")
+      if (!response.ok) throw new Error("load_failed")
       setOrders(result)
+      setOpened(true)
       window.sessionStorage.setItem("esaforce-admin-pin", pin)
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Could not load orders")
+    } catch {
+      setError(t.adminLoadError)
+      setOpened(false)
     } finally {
       setLoading(false)
     }
   }
 
   async function changeStatus(orderCode: string, status: string) {
-    const response = await fetch("/api/admin/orders", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-pin": pin },
-      body: JSON.stringify({ orderCode, status }),
-    })
-    if (response.ok) setOrders(orders.map((order) => order.order_code === orderCode ? { ...order, status } : order))
+    setError("")
+    try {
+      const response = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-pin": pin },
+        body: JSON.stringify({ orderCode, status }),
+      })
+      if (!response.ok) throw new Error("update_failed")
+      setOrders(orders.map((order) => order.order_code === orderCode ? { ...order, status } : order))
+    } catch {
+      setError(t.adminUpdateError)
+    }
   }
 
+  const locale = language === "ar" ? "ar-MA" : language === "fr" ? "fr-MA" : "en-GB"
+
   return (
-    <main className="admin-page">
-      <header><div><span className="brand-mark"><b>F</b><i>P</i></span><strong>ESAFORCE</strong><small>KITCHEN</small></div><button onClick={loadOrders}><RefreshCw size={17} />Refresh</button></header>
+    <main className="admin-page" dir={language === "ar" ? "rtl" : "ltr"}>
+      <header>
+        <div><span className="brand-mark"><b>F</b><i>P</i></span><strong>ESAFORCE</strong><small>{t.kitchen}</small></div>
+        <div className="admin-header-actions">
+          <label className="admin-language"><Languages size={16} /><select value={language} onChange={(event) => setLanguage(event.target.value as Language)} aria-label={t.language}>{languages.map((item) => <option key={item.code} value={item.code}>{item.label} · {item.native}</option>)}</select></label>
+          <button onClick={loadOrders}><RefreshCw size={17} />{t.refresh}</button>
+        </div>
+      </header>
       <section className="admin-login">
-        <label><LockKeyhole size={18} /><input type="password" value={pin} onChange={(event) => setPin(event.target.value)} placeholder="Admin PIN" /><button onClick={loadOrders}>{loading ? "Loading…" : "Open dashboard"}</button></label>
+        <label><LockKeyhole size={18} /><input type="password" value={pin} onChange={(event) => setPin(event.target.value)} placeholder={t.adminPin} /><button onClick={loadOrders}>{loading ? t.loading : t.openDashboard}</button></label>
         {error && <p>{error}</p>}
       </section>
+      {opened && orders.length === 0 && <p className="admin-empty">{t.noOrders}</p>}
       <section className="admin-grid">
         {orders.map((order) => (
           <article className={`admin-order status-${order.status}`} key={order.id}>
-            <div className="admin-order-heading"><div><span>{order.order_code}</span><h2>{order.customer_name}</h2><p>{order.fulfillment} · {order.pickup_time}</p></div><strong>{order.total} MAD</strong></div>
-            <div className="admin-items">{order.order_items.map((item) => <div key={item.id}><b>{item.quantity}×</b><span>{item.name}</span>{Object.keys(item.selections ?? {}).length > 0 && <small>{Object.values(item.selections).join(" · ")}</small>}</div>)}</div>
+            <div className="admin-order-heading">
+              <div><span>{order.order_code}</span><h2>{order.customer_name}</h2><p>{fulfillmentText(order.fulfillment, language)} · {pickupTimeText(order.pickup_time, language)}</p></div>
+              <strong>{order.total} MAD</strong>
+            </div>
+            <div className="admin-items">
+              {order.order_items.map((item) => (
+                <div key={item.id}>
+                  <b>{item.quantity}×</b>
+                  <span>{catalogText(item.name, language)}</span>
+                  {Object.keys(item.selections ?? {}).length > 0 && <small>{Object.values(item.selections).map((value) => catalogText(value, language)).join(" · ")}</small>}
+                </div>
+              ))}
+            </div>
             {order.notes && <p className="admin-note">{order.notes}</p>}
-            <div className="admin-meta"><span><Clock3 />{new Date(order.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span><span><Coffee />{order.phone}</span></div>
-            <div className="status-actions">{statuses.map((status) => <button key={status} className={order.status === status ? "active" : ""} onClick={() => changeStatus(order.order_code, status)}>{order.status === status && <Check size={13} />}{status}</button>)}</div>
+            <div className="admin-meta"><span><Clock3 />{new Date(order.created_at).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}</span><span><Coffee />{order.phone}</span></div>
+            <div className="status-actions">{statuses.map((status) => <button key={status} className={order.status === status ? "active" : ""} onClick={() => changeStatus(order.order_code, status)}>{order.status === status && <Check size={13} />}{statusText(status, language)}</button>)}</div>
           </article>
         ))}
       </section>
