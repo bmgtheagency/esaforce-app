@@ -59,15 +59,17 @@ function round(value: number) {
 }
 
 function Brand({ compact = false }: { compact?: boolean }) {
+  if (compact) {
+    return <span className="brand-mark" aria-hidden="true"><b>F</b><i>P</i></span>
+  }
+
   return (
     <button className="brand" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
       <span className="brand-mark"><b>F</b><i>P</i></span>
-      {!compact && (
-        <span className="brand-copy">
-          <strong>ESAFORCE</strong>
-          <small>FUEL YOUR STRENGTH</small>
-        </span>
-      )}
+      <span className="brand-copy">
+        <strong>ESAFORCE</strong>
+        <small>FUEL YOUR STRENGTH</small>
+      </span>
     </button>
   )
 }
@@ -169,24 +171,12 @@ function ProductCard({
 }
 
 export default function Home() {
-  const [language, setLanguage] = useState<Language>(() => {
-    if (typeof window === "undefined") return "en"
-    const stored = window.localStorage.getItem("esaforce-language")
-    return stored === "fr" || stored === "ar" ? stored : "en"
-  })
+  const [language, setLanguage] = useState<Language>("en")
   const [view, setView] = useState<View>("home")
   const [cart, setCart] = useState<CartItem[]>([])
   const [cartOpen, setCartOpen] = useState(false)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    if (typeof window === "undefined") return []
-    const stored = window.localStorage.getItem("esaforce-favorites")
-    try {
-      return stored ? JSON.parse(stored) : []
-    } catch {
-      return []
-    }
-  })
+  const [favorites, setFavorites] = useState<string[]>([])
   const [category, setCategory] = useState("All")
   const [goal, setGoal] = useState("All goals")
   const [query, setQuery] = useState("")
