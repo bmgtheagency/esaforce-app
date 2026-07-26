@@ -17,7 +17,7 @@ import {
   X,
   Zap,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   builderDefaults,
   builderGroups,
@@ -27,85 +27,19 @@ import {
   type Nutrition,
   type Product,
 } from "@/lib/catalog"
+import {
+  catalogText,
+  languages,
+  pickupTimes,
+  pickupTimeText,
+  statusText,
+  ui,
+  type Language,
+  type UiCopy,
+} from "@/lib/i18n"
 import type { CartItem, OrderPayload } from "@/lib/types"
 
-type Language = "en" | "fr" | "ar"
 type View = "home" | "menu" | "build" | "track"
-
-const copy = {
-  en: {
-    menu: "Menu",
-    build: "Build",
-    track: "Orders",
-    heroEyebrow: "Protein coffee · functional drinks · Kenitra",
-    heroTitle: "Your drink. Your goals. Your force.",
-    heroText: "Order a signature recipe or build every detail while calories, protein and price update live.",
-    orderNow: "Explore the menu",
-    buildMine: "Build my drink",
-    popular: "Power picks",
-    popularText: "Customer favourites made for energy, recovery and everyday strength.",
-    allMenu: "Full menu",
-    search: "Search coffee, fruit, protein…",
-    customize: "Customize",
-    add: "Add",
-    cart: "Your order",
-    checkout: "Checkout",
-    emptyCart: "Your bag is ready for something powerful.",
-    builderTitle: "Build your force",
-    builderText: "Choose one option in every step. All nutrition values are estimates until final shop products are verified.",
-    liveFuel: "Live fuel",
-    trackTitle: "Track an order",
-    trackText: "Enter the code from your confirmation.",
-  },
-  fr: {
-    menu: "Menu",
-    build: "Composer",
-    track: "Commandes",
-    heroEyebrow: "Café protéiné · boissons fonctionnelles · Kénitra",
-    heroTitle: "Votre boisson. Vos objectifs. Votre force.",
-    heroText: "Choisissez une recette ou composez-la pendant que calories, protéines et prix s’actualisent.",
-    orderNow: "Voir le menu",
-    buildMine: "Composer ma boisson",
-    popular: "Les favoris",
-    popularText: "Des recettes pensées pour l’énergie, la récupération et la force au quotidien.",
-    allMenu: "Menu complet",
-    search: "Rechercher café, fruit, protéine…",
-    customize: "Personnaliser",
-    add: "Ajouter",
-    cart: "Votre commande",
-    checkout: "Commander",
-    emptyCart: "Votre panier attend une dose de force.",
-    builderTitle: "Composez votre force",
-    builderText: "Choisissez une option à chaque étape. Les valeurs sont estimées jusqu’à vérification des produits.",
-    liveFuel: "Nutrition",
-    trackTitle: "Suivre une commande",
-    trackText: "Entrez le code de votre confirmation.",
-  },
-  ar: {
-    menu: "القائمة",
-    build: "حضّر مشروبك",
-    track: "الطلبات",
-    heroEyebrow: "قهوة بالبروتين · مشروبات وظيفية · القنيطرة",
-    heroTitle: "مشروبك. هدفك. قوتك.",
-    heroText: "اختر وصفة جاهزة أو حضّر مشروبك وشاهد السعر والسعرات والبروتين تتغيّر مباشرة.",
-    orderNow: "اكتشف القائمة",
-    buildMine: "حضّر مشروبي",
-    popular: "الأكثر طلباً",
-    popularText: "وصفات للطاقة، الاسترجاع والقوة اليومية.",
-    allMenu: "القائمة الكاملة",
-    search: "ابحث عن قهوة، فواكه، بروتين…",
-    customize: "تعديل",
-    add: "إضافة",
-    cart: "طلبك",
-    checkout: "إتمام الطلب",
-    emptyCart: "السلة جاهزة لمشروب قوي.",
-    builderTitle: "حضّر قوتك",
-    builderText: "اختر من كل مرحلة. القيم الغذائية تقديرية إلى حين اعتماد المنتجات النهائية.",
-    liveFuel: "القيم المباشرة",
-    trackTitle: "تتبع الطلب",
-    trackText: "أدخل الرمز الموجود في تأكيد الطلب.",
-  },
-} as const
 
 const statusSteps = ["received", "preparing", "ready", "collected"]
 
@@ -138,12 +72,42 @@ function Brand({ compact = false }: { compact?: boolean }) {
   )
 }
 
-function NutritionRow({ nutrition, small = false }: { nutrition: Nutrition; small?: boolean }) {
+function LanguagePicker({
+  language,
+  onChange,
+}: {
+  language: Language
+  onChange: (language: Language) => void
+}) {
+  return (
+    <div className="language-picker">
+      <Languages size={17} />
+      <select
+        value={language}
+        onChange={(event) => onChange(event.target.value as Language)}
+        aria-label={ui[language].language}
+      >
+        {languages.map((item) => <option key={item.code} value={item.code}>{item.label} · {item.native}</option>)}
+      </select>
+      <ChevronDown size={13} />
+    </div>
+  )
+}
+
+function NutritionRow({
+  nutrition,
+  t,
+  small = false,
+}: {
+  nutrition: Nutrition
+  t: UiCopy
+  small?: boolean
+}) {
   const items = [
-    ["kcal", Math.round(nutrition.kcal)],
-    ["protein", `${round(nutrition.protein)}g`],
-    ["sugar", `${round(nutrition.sugar)}g`],
-    ["caffeine", `${Math.round(nutrition.caffeine)}mg`],
+    [t.calories, Math.round(nutrition.kcal)],
+    [t.protein, `${round(nutrition.protein)}g`],
+    [t.sugar, `${round(nutrition.sugar)}g`],
+    [t.caffeine, `${Math.round(nutrition.caffeine)}mg`],
   ]
   return (
     <div className={small ? "nutrition-row small" : "nutrition-row"}>
@@ -159,40 +123,45 @@ function NutritionRow({ nutrition, small = false }: { nutrition: Nutrition; smal
 
 function ProductCard({
   product,
+  language,
+  t,
   favorite,
   onFavorite,
   onAdd,
 }: {
   product: Product
+  language: Language
+  t: UiCopy
   favorite: boolean
   onFavorite: () => void
   onAdd: () => void
 }) {
+  const name = catalogText(product.name, language)
   return (
     <article className="product-card" style={{ "--accent": product.accent } as React.CSSProperties}>
       <div className="product-photo">
         <Image
           src="/brand/drinks-hero.webp"
-          alt=""
+          alt={name}
           fill
           sizes="(max-width: 700px) 72vw, 320px"
           style={{ objectPosition: `${product.imagePosition} 62%` }}
         />
         <span className="product-tint" />
-        {product.popular && <span className="product-badge"><Zap size={12} /> Popular</span>}
-        {product.vegan && <span className="vegan-badge">V</span>}
-        <button className={favorite ? "heart active" : "heart"} onClick={onFavorite} aria-label="Favourite">
+        {product.popular && <span className="product-badge"><Zap size={12} /> {t.popularBadge}</span>}
+        {product.vegan && <span className="vegan-badge" title={t.veganBadge}>V</span>}
+        <button className={favorite ? "heart active" : "heart"} onClick={onFavorite} aria-label={`${t.favourite}: ${name}`}>
           <Heart size={18} fill={favorite ? "currentColor" : "none"} />
         </button>
       </div>
       <div className="product-body">
-        <span className="category-label">{product.category}</span>
-        <h3>{product.name}</h3>
-        <p>{product.description}</p>
-        <NutritionRow nutrition={product.nutrition} small />
+        <span className="category-label">{catalogText(product.category, language)}</span>
+        <h3>{name}</h3>
+        <p>{catalogText(product.description, language)}</p>
+        <NutritionRow nutrition={product.nutrition} t={t} small />
         <div className="product-footer">
           <strong>{product.price} <small>MAD</small></strong>
-          <button onClick={onAdd} aria-label={`Add ${product.name}`}><span>Add</span><ArrowRight size={16} /></button>
+          <button onClick={onAdd} aria-label={`${t.add}: ${name}`}><span>{t.add}</span><ArrowRight size={16} /></button>
         </div>
       </div>
     </article>
@@ -200,7 +169,11 @@ function ProductCard({
 }
 
 export default function Home() {
-  const [language, setLanguage] = useState<Language>("en")
+  const [language, setLanguage] = useState<Language>(() => {
+    if (typeof window === "undefined") return "en"
+    const stored = window.localStorage.getItem("esaforce-language")
+    return stored === "fr" || stored === "ar" ? stored : "en"
+  })
   const [view, setView] = useState<View>("home")
   const [cart, setCart] = useState<CartItem[]>([])
   const [cartOpen, setCartOpen] = useState(false)
@@ -208,28 +181,45 @@ export default function Home() {
   const [favorites, setFavorites] = useState<string[]>(() => {
     if (typeof window === "undefined") return []
     const stored = window.localStorage.getItem("esaforce-favorites")
-    return stored ? JSON.parse(stored) : []
+    try {
+      return stored ? JSON.parse(stored) : []
+    } catch {
+      return []
+    }
   })
   const [category, setCategory] = useState("All")
   const [goal, setGoal] = useState("All goals")
   const [query, setQuery] = useState("")
   const [builder, setBuilder] = useState(builderDefaults)
   const [toast, setToast] = useState("")
-  const t = copy[language]
+  const t = ui[language]
   const rtl = language === "ar"
+
+  useEffect(() => {
+    document.documentElement.lang = language
+    document.documentElement.dir = rtl ? "rtl" : "ltr"
+    window.localStorage.setItem("esaforce-language", language)
+  }, [language, rtl])
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
   const filteredProducts = useMemo(() => {
-    const normalized = query.toLowerCase().trim()
+    const normalized = query.toLocaleLowerCase(language).trim()
     return products.filter((product) => {
       const matchesCategory = category === "All" || product.category === category
       const matchesGoal = goal === "All goals" || product.goal === goal
-      const matchesQuery = !normalized || `${product.name} ${product.description} ${product.category}`.toLowerCase().includes(normalized)
-      return matchesCategory && matchesGoal && matchesQuery
+      const searchable = [
+        product.name,
+        product.description,
+        product.category,
+        catalogText(product.name, language),
+        catalogText(product.description, language),
+        catalogText(product.category, language),
+      ].join(" ").toLocaleLowerCase(language)
+      return matchesCategory && matchesGoal && (!normalized || searchable.includes(normalized))
     })
-  }, [category, goal, query])
+  }, [category, goal, language, query])
 
   const builderResult = useMemo(() => {
     let price = 14
@@ -257,6 +247,10 @@ export default function Home() {
     window.setTimeout(() => setToast(""), 2200)
   }
 
+  function changeLanguage(next: Language) {
+    setLanguage(next)
+  }
+
   function addProduct(product: Product) {
     const existing = cart.find((item) => item.productId === product.id && !item.selections)
     if (existing) {
@@ -264,11 +258,10 @@ export default function Home() {
     } else {
       setCart([...cart, { lineId: crypto.randomUUID(), productId: product.id, name: product.name, price: product.price, quantity: 1, nutrition: product.nutrition }])
     }
-    notify(`${product.name} added`)
+    notify(`${catalogText(product.name, language)} ${t.added}`)
   }
 
   function addCustomDrink() {
-    const selections = { ...builder }
     setCart([...cart, {
       lineId: crypto.randomUUID(),
       productId: "custom-drink",
@@ -276,9 +269,9 @@ export default function Home() {
       price: builderResult.price,
       quantity: 1,
       nutrition: builderResult.nutrition,
-      selections,
+      selections: { ...builder },
     }])
-    notify("Custom drink added")
+    notify(t.customAdded)
     setCartOpen(true)
   }
 
@@ -301,6 +294,18 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  const productCard = (product: Product) => (
+    <ProductCard
+      key={product.id}
+      product={product}
+      language={language}
+      t={t}
+      favorite={favorites.includes(product.id)}
+      onFavorite={() => toggleFavorite(product.id)}
+      onAdd={() => addProduct(product)}
+    />
+  )
+
   return (
     <div className="app-shell" dir={rtl ? "rtl" : "ltr"}>
       <header className="site-header">
@@ -311,16 +316,8 @@ export default function Home() {
           <button className={view === "track" ? "active" : ""} onClick={() => navigate("track")}>{t.track}</button>
         </nav>
         <div className="header-actions">
-          <div className="language-picker">
-            <Languages size={17} />
-            <select value={language} onChange={(event) => setLanguage(event.target.value as Language)} aria-label="Language">
-              <option value="en">EN</option>
-              <option value="fr">FR</option>
-              <option value="ar">AR</option>
-            </select>
-            <ChevronDown size={13} />
-          </div>
-          <button className="cart-button" onClick={() => setCartOpen(true)} aria-label="Open cart">
+          <LanguagePicker language={language} onChange={changeLanguage} />
+          <button className="cart-button" onClick={() => setCartOpen(true)} aria-label={t.openCart}>
             <ShoppingBag size={19} />
             {cartCount > 0 && <span>{cartCount}</span>}
           </button>
@@ -331,7 +328,7 @@ export default function Home() {
         {view === "home" && (
           <>
             <section className="hero">
-              <Image src="/brand/drinks-hero.webp" alt="ESAFORCE fresh protein drinks" fill priority sizes="100vw" />
+              <Image src="/brand/drinks-hero.webp" alt={t.heroEyebrow} fill priority sizes="100vw" />
               <div className="hero-overlay" />
               <div className="hero-content">
                 <span className="eyebrow"><Sparkles size={15} /> {t.heroEyebrow}</span>
@@ -342,53 +339,51 @@ export default function Home() {
                   <button className="secondary-button" onClick={() => navigate("build")}><Dumbbell size={18} />{t.buildMine}</button>
                 </div>
                 <div className="hero-facts">
-                  <span><b>24</b> recipes</span>
-                  <span><b>50+</b> choices</span>
-                  <span><b>Live</b> nutrition</span>
+                  <span><b>24</b> {t.recipes}</span>
+                  <span><b>50+</b> {t.choices}</span>
+                  <span><b>{t.live}</b> {t.nutrition}</span>
                 </div>
               </div>
             </section>
 
             <section className="section">
               <div className="section-heading">
-                <div><span>01 · SIGNATURES</span><h2>{t.popular}</h2><p>{t.popularText}</p></div>
+                <div><span>01 · {t.signatures}</span><h2>{t.popular}</h2><p>{t.popularText}</p></div>
                 <button className="text-button" onClick={() => navigate("menu")}>{t.allMenu}<ArrowRight size={16} /></button>
               </div>
               <div className="product-grid featured">
-                {products.filter((product) => product.popular).slice(0, 4).map((product) => (
-                  <ProductCard key={product.id} product={product} favorite={favorites.includes(product.id)} onFavorite={() => toggleFavorite(product.id)} onAdd={() => addProduct(product)} />
-                ))}
+                {products.filter((product) => product.popular).slice(0, 4).map(productCard)}
               </div>
             </section>
 
             <section className="builder-promo">
-              <Image src="/brand/ingredients-flatlay.webp" alt="Fresh ESAFORCE ingredients" fill sizes="100vw" />
+              <Image src="/brand/ingredients-flatlay.webp" alt={t.calculatorText} fill sizes="100vw" />
               <div className="builder-promo-overlay" />
               <div>
-                <span className="eyebrow"><Zap size={14} /> LIVE CALCULATOR</span>
-                <h2>Every choice. Counted live.</h2>
-                <p>Pick your milk, coffee, protein, fruit, flavour and booster. See exactly how your mix changes.</p>
-                <button className="primary-button" onClick={() => navigate("build")}>Start building<ArrowRight size={18} /></button>
+                <span className="eyebrow"><Zap size={14} /> {t.calculator}</span>
+                <h2>{t.calculatorTitle}</h2>
+                <p>{t.calculatorText}</p>
+                <button className="primary-button" onClick={() => navigate("build")}>{t.startBuilding}<ArrowRight size={18} /></button>
               </div>
               <div className="macro-demo">
-                <span><small>Calories</small><b>328</b><em>kcal</em></span>
-                <span><small>Protein</small><b>31</b><em>g</em></span>
-                <span><small>Price</small><b>46</b><em>MAD</em></span>
+                <span><small>{t.calories}</small><b>328</b><em>kcal</em></span>
+                <span><small>{t.protein}</small><b>31</b><em>g</em></span>
+                <span><small>{t.price}</small><b>46</b><em>MAD</em></span>
               </div>
             </section>
 
             <section className="shop-story">
               <div className="shop-copy">
-                <span className="section-kicker">COMING TO KENITRA</span>
-                <h2>Built for quick fuel. Designed to stay.</h2>
-                <p>A compact protein coffee bar with app ordering, fresh preparation and a simple pickup flow.</p>
+                <span className="section-kicker">{t.coming}</span>
+                <h2>{t.storyTitle}</h2>
+                <p>{t.storyText}</p>
                 <div className="story-features">
-                  <span><Coffee />Fresh coffee</span>
-                  <span><Dumbbell />Goal-based drinks</span>
-                  <span><Timer />Fast pickup</span>
+                  <span><Coffee />{t.freshCoffee}</span>
+                  <span><Dumbbell />{t.goalDrinks}</span>
+                  <span><Timer />{t.fastPickup}</span>
                 </div>
               </div>
-              <div className="shop-image"><Image src="/brand/shop-interior.webp" alt="ESAFORCE coffee shop interior concept" fill sizes="(max-width: 800px) 100vw, 50vw" /></div>
+              <div className="shop-image"><Image src="/brand/shop-interior.webp" alt={t.storyTitle} fill sizes="(max-width: 800px) 100vw, 50vw" /></div>
             </section>
           </>
         )}
@@ -396,32 +391,28 @@ export default function Home() {
         {view === "menu" && (
           <section className="section menu-page">
             <div className="page-heading">
-              <span className="section-kicker">24 RECIPES · KENITRA</span>
+              <span className="section-kicker">{t.menuKicker}</span>
               <h1>{t.allMenu}</h1>
-              <p>Protein coffee, shakes, smoothies, functional drinks and healthy food.</p>
+              <p>{t.menuDescription}</p>
             </div>
             <div className="filter-panel">
               <label className="search-box"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.search} /></label>
-              <select value={goal} onChange={(event) => setGoal(event.target.value)}>
-                {goals.map((item) => <option key={item}>{item}</option>)}
+              <select value={goal} onChange={(event) => setGoal(event.target.value)} aria-label={catalogText("All goals", language)}>
+                {goals.map((item) => <option key={item} value={item}>{catalogText(item, language)}</option>)}
               </select>
             </div>
             <div className="category-scroll">
-              {categories.map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}</button>)}
+              {categories.map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{catalogText(item, language)}</button>)}
             </div>
-            <div className="results-line"><span>{filteredProducts.length} items</span><button onClick={() => { setCategory("All"); setGoal("All goals"); setQuery("") }}>Reset filters</button></div>
-            <div className="product-grid">
-              {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} favorite={favorites.includes(product.id)} onFavorite={() => toggleFavorite(product.id)} onAdd={() => addProduct(product)} />
-              ))}
-            </div>
+            <div className="results-line"><span>{filteredProducts.length} {t.items}</span><button onClick={() => { setCategory("All"); setGoal("All goals"); setQuery("") }}>{t.resetFilters}</button></div>
+            <div className="product-grid">{filteredProducts.map(productCard)}</div>
           </section>
         )}
 
         {view === "build" && (
           <section className="builder-page">
             <div className="builder-intro">
-              <span className="section-kicker">50+ COMBINATIONS · LIVE TOTALS</span>
+              <span className="section-kicker">{t.builderKicker}</span>
               <h1>{t.builderTitle}</h1>
               <p>{t.builderText}</p>
             </div>
@@ -429,7 +420,7 @@ export default function Home() {
               <div className="builder-steps">
                 {Object.entries(builderGroups).map(([group, options], index) => (
                   <section className="builder-step" key={group}>
-                    <div className="step-heading"><span>{String(index + 1).padStart(2, "0")}</span><h2>{group === "boost" ? "Booster" : group}</h2><em>Choose one</em></div>
+                    <div className="step-heading"><span>{String(index + 1).padStart(2, "0")}</span><h2>{catalogText(group, language)}</h2><em>{t.chooseOne}</em></div>
                     <div className={`option-grid ${group === "fruit" ? "fruit-options" : ""}`}>
                       {options.map((option) => {
                         const selected = builder[group] === option.id
@@ -442,7 +433,7 @@ export default function Home() {
                           >
                             {group === "fruit" && <span className={`fruit-thumb fruit-${option.id}`} />}
                             <span className="option-dot" />
-                            <span className="option-copy"><b>{option.name}</b><small>{option.price ? `+${option.price} MAD` : "Included"}</small></span>
+                            <span className="option-copy"><b>{catalogText(option.name, language)}</b><small>{option.price ? `+${option.price} MAD` : t.included}</small></span>
                             {selected && <Check size={17} />}
                           </button>
                         )
@@ -453,44 +444,44 @@ export default function Home() {
               </div>
               <aside className="live-card">
                 <span className="live-label"><span /> {t.liveFuel}</span>
-                <h2>My ESAFORCE Mix</h2>
+                <h2>{t.customMix}</h2>
                 <div className="drink-visual">
                   <span className="cup">
                     <span className="liquid" style={{ background: builderGroups.fruit.find((item) => item.id === builder.fruit)?.accent }} />
                     <b>F<span>P</span></b>
                   </span>
-                  <small>{builderGroups.size.find((item) => item.id === builder.size)?.name}</small>
+                  <small>{catalogText(builderGroups.size.find((item) => item.id === builder.size)?.name ?? "", language)}</small>
                 </div>
-                <NutritionRow nutrition={builderResult.nutrition} />
+                <NutritionRow nutrition={builderResult.nutrition} t={t} />
                 <div className="secondary-macros">
-                  <span>Carbs <b>{round(builderResult.nutrition.carbs)}g</b></span>
-                  <span>Fat <b>{round(builderResult.nutrition.fat)}g</b></span>
+                  <span>{t.carbs} <b>{round(builderResult.nutrition.carbs)}g</b></span>
+                  <span>{t.fat} <b>{round(builderResult.nutrition.fat)}g</b></span>
                 </div>
-                {builderResult.allergens.length > 0 && <p className="allergen">Contains: {builderResult.allergens.join(", ")}</p>}
-                {builderResult.nutrition.caffeine > 200 && <p className="warning">High caffeine selection</p>}
-                <div className="live-total"><span>Total</span><strong>{builderResult.price} <small>MAD</small></strong></div>
-                <button className="primary-button full" onClick={addCustomDrink}><ShoppingBag size={18} />Add custom drink</button>
-                <p className="estimate-note">Nutritional values are estimates and vary by final product brand and preparation.</p>
+                {builderResult.allergens.length > 0 && <p className="allergen">{t.contains}: {builderResult.allergens.map((item) => catalogText(item, language)).join("، ")}</p>}
+                {builderResult.nutrition.caffeine > 200 && <p className="warning">{t.highCaffeine}</p>}
+                <div className="live-total"><span>{t.total}</span><strong>{builderResult.price} <small>MAD</small></strong></div>
+                <button className="primary-button full" onClick={addCustomDrink}><ShoppingBag size={18} />{t.addCustom}</button>
+                <p className="estimate-note">{t.estimate}</p>
               </aside>
             </div>
           </section>
         )}
 
-        {view === "track" && <OrderTracker title={t.trackTitle} text={t.trackText} />}
+        {view === "track" && <OrderTracker language={language} />}
       </main>
 
       <nav className="mobile-nav">
-        <button className={view === "home" ? "active" : ""} onClick={() => navigate("home")}><Brand compact /><small>Home</small></button>
+        <button className={view === "home" ? "active" : ""} onClick={() => navigate("home")}><Brand compact /><small>{t.home}</small></button>
         <button className={view === "menu" ? "active" : ""} onClick={() => navigate("menu")}><Coffee /><small>{t.menu}</small></button>
         <button className={view === "build" ? "build-nav active" : "build-nav"} onClick={() => navigate("build")}><Dumbbell /><small>{t.build}</small></button>
         <button className={view === "track" ? "active" : ""} onClick={() => navigate("track")}><Timer /><small>{t.track}</small></button>
-        <button onClick={() => setCartOpen(true)}><ShoppingBag />{cartCount > 0 && <i>{cartCount}</i>}<small>Cart</small></button>
+        <button onClick={() => setCartOpen(true)}><ShoppingBag />{cartCount > 0 && <i>{cartCount}</i>}<small>{t.cartNav}</small></button>
       </nav>
 
       {cartOpen && (
         <div className="modal-layer" onMouseDown={(event) => event.currentTarget === event.target && setCartOpen(false)}>
           <aside className="cart-drawer">
-            <div className="drawer-heading"><div><span>ESAFORCE</span><h2>{t.cart}</h2></div><button onClick={() => setCartOpen(false)}><X /></button></div>
+            <div className="drawer-heading"><div><span>ESAFORCE</span><h2>{t.cart}</h2></div><button onClick={() => setCartOpen(false)} aria-label={t.close}><X /></button></div>
             {cart.length === 0 ? (
               <div className="empty-cart"><ShoppingBag /><h3>{t.emptyCart}</h3><button className="primary-button" onClick={() => { setCartOpen(false); navigate("menu") }}>{t.orderNow}</button></div>
             ) : (
@@ -499,16 +490,20 @@ export default function Home() {
                   {cart.map((item) => (
                     <article className="cart-item" key={item.lineId}>
                       <div className="cart-icon"><Coffee /></div>
-                      <div><h3>{item.name}</h3><p>{Math.round(item.nutrition.kcal)} kcal · {round(item.nutrition.protein)}g protein</p>{item.selections && <small>Custom recipe · {Object.keys(item.selections).length} choices</small>}</div>
+                      <div>
+                        <h3>{catalogText(item.name, language)}</h3>
+                        <p>{Math.round(item.nutrition.kcal)} kcal · {round(item.nutrition.protein)}g {t.protein.toLocaleLowerCase(language)}</p>
+                        {item.selections && <small>{t.customRecipe} · {Object.keys(item.selections).length} {t.choices}</small>}
+                      </div>
                       <div className="quantity"><button onClick={() => updateQuantity(item.lineId, -1)}><Minus /></button><span>{item.quantity}</span><button onClick={() => updateQuantity(item.lineId, 1)}>+</button></div>
                       <strong>{item.price * item.quantity} MAD</strong>
                     </article>
                   ))}
                 </div>
                 <div className="cart-summary">
-                  <span>Subtotal <b>{subtotal} MAD</b></span>
-                  <span>Pickup <b>Free</b></span>
-                  <div>Total <strong>{subtotal} MAD</strong></div>
+                  <span>{t.subtotal} <b>{subtotal} MAD</b></span>
+                  <span>{t.pickup} <b>{t.free}</b></span>
+                  <div>{t.total} <strong>{subtotal} MAD</strong></div>
                   <button className="primary-button full" onClick={() => { setCartOpen(false); setCheckoutOpen(true) }}>{t.checkout}<ArrowRight size={18} /></button>
                 </div>
               </>
@@ -528,7 +523,7 @@ export default function Home() {
             setCheckoutOpen(false)
             window.localStorage.setItem("esaforce-last-order", orderCode)
             navigate("track")
-            notify(`Order ${orderCode} received`)
+            notify(`${t.order} ${orderCode} ${t.orderReceived}`)
           }}
         />
       )}
@@ -551,6 +546,7 @@ function Checkout({
   onClose: () => void
   onSuccess: (code: string) => void
 }) {
+  const t = ui[language]
   const [form, setForm] = useState({ customerName: "", phone: "", fulfillment: "pickup" as "pickup" | "eat-in", pickupTime: "As soon as possible", notes: "" })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -562,11 +558,7 @@ function Checkout({
     const payload: OrderPayload = {
       ...form,
       language,
-      items: items.map(({ productId, quantity, selections }) => ({
-        productId,
-        quantity,
-        selections,
-      })),
+      items: items.map(({ productId, quantity, selections }) => ({ productId, quantity, selections })),
       subtotal: total,
       total,
     }
@@ -577,10 +569,10 @@ function Checkout({
         body: JSON.stringify(payload),
       })
       const result = await response.json()
-      if (!response.ok) throw new Error(result.error ?? "Order failed")
+      if (!response.ok) throw new Error("order_failed")
       onSuccess(result.orderCode)
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Order failed")
+    } catch {
+      setError(t.orderFailed)
     } finally {
       setLoading(false)
     }
@@ -588,23 +580,24 @@ function Checkout({
 
   return (
     <div className="modal-layer checkout-layer">
-      <form className="checkout-modal" onSubmit={submit}>
-        <div className="drawer-heading"><div><span>SECURE ORDER</span><h2>Checkout</h2></div><button type="button" onClick={onClose}><X /></button></div>
-        <label>Name<input required minLength={2} value={form.customerName} onChange={(event) => setForm({ ...form, customerName: event.target.value })} placeholder="Your name" /></label>
-        <label>Phone / WhatsApp<input required minLength={8} value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="+212 6…" inputMode="tel" /></label>
-        <fieldset><legend>Order type</legend><div className="choice-row"><button type="button" className={form.fulfillment === "pickup" ? "selected" : ""} onClick={() => setForm({ ...form, fulfillment: "pickup" })}>Takeaway</button><button type="button" className={form.fulfillment === "eat-in" ? "selected" : ""} onClick={() => setForm({ ...form, fulfillment: "eat-in" })}>Eat in</button></div></fieldset>
-        <label>Ready time<select value={form.pickupTime} onChange={(event) => setForm({ ...form, pickupTime: event.target.value })}><option>As soon as possible</option><option>In 30 minutes</option><option>In 1 hour</option><option>Schedule at counter</option></select></label>
-        <label>Notes<textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Allergy or preparation note…" rows={3} /></label>
-        <p className="checkout-notice">Payment: cash or card at the counter. Please tell staff about serious allergies.</p>
+      <form className="checkout-modal" onSubmit={submit} dir={language === "ar" ? "rtl" : "ltr"}>
+        <div className="drawer-heading"><div><span>{t.secureOrder}</span><h2>{t.checkout}</h2></div><button type="button" onClick={onClose} aria-label={t.close}><X /></button></div>
+        <label>{t.name}<input required minLength={2} value={form.customerName} onChange={(event) => setForm({ ...form, customerName: event.target.value })} placeholder={t.namePlaceholder} /></label>
+        <label>{t.phone}<input required minLength={8} value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="+212 6…" inputMode="tel" /></label>
+        <fieldset><legend>{t.orderType}</legend><div className="choice-row"><button type="button" className={form.fulfillment === "pickup" ? "selected" : ""} onClick={() => setForm({ ...form, fulfillment: "pickup" })}>{t.takeaway}</button><button type="button" className={form.fulfillment === "eat-in" ? "selected" : ""} onClick={() => setForm({ ...form, fulfillment: "eat-in" })}>{t.eatIn}</button></div></fieldset>
+        <label>{t.readyTime}<select value={form.pickupTime} onChange={(event) => setForm({ ...form, pickupTime: event.target.value })}>{pickupTimes.map((item) => <option key={item.value} value={item.value}>{t[item.key]}</option>)}</select></label>
+        <label>{t.notes}<textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder={t.notesPlaceholder} rows={3} /></label>
+        <p className="checkout-notice">{t.paymentNotice}</p>
         {error && <p className="form-error">{error}</p>}
-        <div className="checkout-total"><span>{items.length} items</span><strong>{total} MAD</strong></div>
-        <button className="primary-button full" disabled={loading}>{loading ? "Placing order…" : "Confirm order"}<ArrowRight size={18} /></button>
+        <div className="checkout-total"><span>{items.length} {t.items}</span><strong>{total} MAD</strong></div>
+        <button className="primary-button full" disabled={loading}>{loading ? t.placingOrder : t.confirmOrder}<ArrowRight size={18} /></button>
       </form>
     </div>
   )
 }
 
-function OrderTracker({ title, text }: { title: string; text: string }) {
+function OrderTracker({ language }: { language: Language }) {
+  const t = ui[language]
   const [code, setCode] = useState(() => {
     if (typeof window === "undefined") return ""
     return window.localStorage.getItem("esaforce-last-order") ?? ""
@@ -620,11 +613,11 @@ function OrderTracker({ title, text }: { title: string; text: string }) {
     try {
       const response = await fetch(`/api/orders/${encodeURIComponent(code.trim())}`)
       const result = await response.json()
-      if (!response.ok) throw new Error(result.error ?? "Order not found")
+      if (!response.ok) throw new Error("not_found")
       setOrder(result)
-    } catch (requestError) {
+    } catch {
       setOrder(null)
-      setError(requestError instanceof Error ? requestError.message : "Order not found")
+      setError(t.orderNotFound)
     } finally {
       setLoading(false)
     }
@@ -635,22 +628,23 @@ function OrderTracker({ title, text }: { title: string; text: string }) {
   return (
     <section className="tracker-page">
       <div className="tracker-card">
-        <span className="section-kicker">LIVE ORDER STATUS</span>
-        <h1>{title}</h1>
-        <p>{text}</p>
-        <form onSubmit={track}><input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="ESA-ABC123" required /><button className="primary-button" disabled={loading}>{loading ? "Checking…" : "Track"}</button></form>
+        <span className="section-kicker">{t.trackKicker}</span>
+        <h1>{t.trackTitle}</h1>
+        <p>{t.trackText}</p>
+        <form onSubmit={track}><input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="ESA-ABC123" required /><button className="primary-button" disabled={loading}>{loading ? t.checking : t.trackAction}</button></form>
         {error && <p className="form-error">{error}</p>}
         {order && (
           <div className="tracking-result">
-            <div className="order-code"><span>Order</span><strong>{order.order_code}</strong><b>{order.total} MAD</b></div>
+            <div className="order-code"><span>{t.order}</span><strong>{order.order_code}</strong><b>{order.total} MAD</b></div>
             <div className="status-track">
-              {statusSteps.map((status, index) => <span key={status} className={index <= activeIndex ? "done" : ""}><i>{index < activeIndex ? <Check /> : index + 1}</i><b>{status}</b></span>)}
+              {statusSteps.map((status, index) => <span key={status} className={index <= activeIndex ? "done" : ""}><i>{index < activeIndex ? <Check /> : index + 1}</i><b>{statusText(status, language)}</b></span>)}
             </div>
-            <p>Ready time: <b>{order.pickup_time}</b></p>
+            {order.status === "cancelled" && <p className="form-error">{statusText("cancelled", language)}</p>}
+            <p>{t.readyTime}: <b>{pickupTimeText(String(order.pickup_time), language)}</b></p>
           </div>
         )}
       </div>
-      <div className="tracker-image"><Image src="/brand/shop-exterior.webp" alt="ESAFORCE Kenitra exterior concept" fill sizes="50vw" /></div>
+      <div className="tracker-image"><Image src="/brand/shop-exterior.webp" alt={t.coming} fill sizes="50vw" /></div>
     </section>
   )
 }
