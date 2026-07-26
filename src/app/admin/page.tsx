@@ -29,15 +29,8 @@ type AdminOrder = {
 const statuses = ["received", "preparing", "ready", "collected", "cancelled"]
 
 export default function AdminPage() {
-  const [language, setLanguage] = useState<Language>(() => {
-    if (typeof window === "undefined") return "en"
-    const stored = window.localStorage.getItem("esaforce-language")
-    return stored === "fr" || stored === "ar" ? stored : "en"
-  })
-  const [pin, setPin] = useState(() => {
-    if (typeof window === "undefined") return ""
-    return window.sessionStorage.getItem("esaforce-admin-pin") ?? ""
-  })
+  const [language, setLanguage] = useState<Language>("en")
+  const [pin, setPin] = useState("")
   const [orders, setOrders] = useState<AdminOrder[]>([])
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
